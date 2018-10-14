@@ -1,0 +1,1021 @@
+=== Component & Databinding Deep Dive:
+==== Property & Event Binding Overview:
+
+permet de passer des data entre les component ?
+	recevoir  des evenement
+
+Binding to Custom Properties:
+(passer des information d’un composant a un autre composant)
+par défaut une property est seulement accessible à l'intérieur de son composant, pour permettre d’y acceder lors de la construction d’un composant il faut ajouter l’interface Input from @angular/core
+@Input devant la property que l’on veut exposer
+exemple:
+dans le server-element.ts:
+[source, javascript]
+----
+
+ @Input() element: {type: string, name: string; content: string};
+
+
+export class AppComponent {
+ serverElements = [{type: 'server', name: 'testServer', content: 'Just a test'}];
+
+----
+et dans le template de appComponent:
+
+[source, html]
+----
+     <app-server-element
+       *ngFor="let serverElement of serverElements"
+       [element]="serverElement"
+     ></app-server-eleyyfment>
+
+----
+
+
+==== Assigning an Alias to Custom Properties
+pour ajouter un alias a la propriete il suffit d’ajouter un argument a @Input
+[source, javascript]
+----
+@Input(‘srvElement’)
+
+----
+[source, html]
+----
+
+     <app-server-element
+       *ngFor="let serverElement of serverElements"
+       [esrvElement]="serverElement"
+     ></app-server-element>
+
+----
+
+==== Binding to Custom Events:
+Permet de remonter des informations d’un composant au composant parent en émettant un événement.
+
+pour cela il faut ajouter l&lsquo;écoute d’un événement sur le composant dans le template (ici dans app-componant.html)
+
+[source, html]
+----
+ <app-cockpit
+   (serverCreated)="onServerAdded($event)"
+----
+dans le composant qui écoute l&lsquo;événement créer la function correspondante
+(app-componant.ts):
+[source, javascript]
+----
+onServerAdded(serverData: {serverName: string, serverContent: string}) {
+----
+
+désormais le composant app écoute les évenements de type serverCreate
+Il faut émettre un évenement de type serverCreate:
+avec l''interface @Output et EventEmitter
+de angular/core:
+déclaration de l''événement: puis émission
+[source, javascript]
+----
+ @Output() serverCreated = new EventEmitter<{serverName: string, serverContent: string}>();
+
+  onAddServer() {
+   this.serverCreated.emit({serverName: this.newServerName, serverContent: this.newServerContent});
+ }
+----
+
+==== Assingin an Alias to Custome Events 0:57
+tout comme l''interface Input il faut ajouter un argument a l''annotation
+
+Custom Property and Event  Binding  Summary 2:02
+TODO resumé des 4 derniers chapitre
+
+==== Understanding View Encapsulation 4:59
+par défaut le css applique dans un composant est rattaché à son fichier css, le style est encapsulé par le composant.
+Lors de la compilation angular ajoute un attribut sur les element html afin d’empecher que la modification du css affecte tout les elements de la page.
+C’est une émulation du shadow DOM
+
+==== More on View Encapsulation
+il est possible de modifier l’encapsulation du style par en indiquant le ViewEncapsulation dans l’interface component:
+
+[source, javascript]
+----
+import { ViewEncapsulation } from '@angular/compiler/src/core';
+@Component({
+encapsulation: ViewEncapsulation.Native
+})
+----
+Il exist 3 types d’encapsulation:
+TODO
+
+==== Using Local References in Templates
+Lorsque le 2 way data binding est inutile, une reference local peut etre placer sur n’importe quel template HTLM (et non dans du code typeScript).
+elle peut ainsi etre envoyé au controler, la variable, le controleur recevra alors l’object representant la reference local (HTMLInputElement si <input> …)
+
+[source, html]
+----
+     <input type="text" class="form-control" #newServerName>
+
+  class="btn btn-primary"
+       (click)="onAddServer(newServerName)">Add Server</button>
+----
+[source, javascript]
+----
+
+onAddServer( nameServer) {
+   console.log('nameServer' + nameServer);
+   this.serverCreated.emit({serverName:   nameServer.value  , serverContent: this.newServerContent});
+ }
+----
+==== Getting access to the Template & DOM with @ViewChild:
+
+ Pour permettre l’acces a un element du DOM du template dans notre controleur, nous devons utiliser le décorateur ViewChild d’angular/core. (toujours pour ne pas utiliser le 2 way data binding).
+
+[source, html]
+----
+<input type="text" class="form-control" #serverContentInput>
+----
+
+et dans le controleur:
+
+[source, javascript]
+----
+ @ViewChild('serverContentInput') serverContent;
+----
+
+si nous loggons nous pouvons voir que serverContent est de type ElementRef
+
+qui est un element natif angualar:(angular/core)nous accedons a sont contenu :
+
+
+[source, javascript]
+----
+ this.serverCreated.emit({serverName:   nameServer.value  , serverContent: this.serverContentInput.nativeElement.value});
+----
+
+==== Projecting Content into Components with ng-content:
+PASS DATA
+Par defaut tout ce qui est écrit entre le tag ouvrant et le tag fermant du component est perdu, angular ne l’interprete pas.
+Pour changer cela, il existe une directive qu’il faut ajouter dans le template:
+ng-content
+
+
+[source, html]
+----
+   <ng-content></ng-content>
+     <app-server-element
+       *ngFor="let serverElement of serverElements"
+       [srvElement]="serverElement"
+     >    <p>
+       <strong *ngIf="serverElement.type === 'server'" style="color: red">{{ serverElement.content }}</strong>
+       <em *ngIf="serverElement.type === 'blueprint'">{{ serverElement.content }}</em>
+     </p></app-server-element>
+----
+
+Cette feature est interessante lorsque l’on veut construire des widget réutilisable.
+
+=== Understanding the Component Lifecycle:
+
+==== Lifecycle Hook and Template Access:
+TODO
+
+==== getting access to ng-content with @ContentChild:
+Pour recuperer le contenu d’une local reference passé avec la directive ng-content on ne peut utiliser le decorateur @ViewChild car le contenu ne fait pas partie du template.
+Pour permettre cela il faut utiliser le decorateur ContentChild d’angular/core
+
+
+[source, javascript]
+----
+@ContentChild(‘Selector’) variableName: ElementRef;
+
+
+ @ContentChild('paragraphe') paragraphe: ElementRef;
+ ngOnInit() {
+   console.log('text of paragraphe on init' + this.paragraphe.nativeElement.textContent );
+ }
+
+ ngAfterContentInit() {
+   console.log('text of paragraphe after content init' + this.paragraphe.nativeElement.textContent );
+ }
+----
+Ici si on regarde les logs :
+
+
+Nous avons ainsi vu comment passer des informations entre les différents composant est comment agir sur ces informations à travers le cycle de vie des composant.
+
+====wrap up:
+Nous avons appris comment utiliser le data binding avec des properties custom et des evenement pour passer des donnée a travers le ?DOM?.
+Comment utiliser des references locales, comment creer une app dynamiquue.
+
+
+
+
+Creer 3 nouveau composant GameControl, Odd, Even
+GameControle possede 2 bouton un pour lancer le jeux et un pour le stopper.
+lorsqu’on lance le jeux an event (qui possede un nombre incrementer) doit etre emis chaque seconde (ref=setInterval())
+l’event doit etre écoutable depuis un autre composant
+lorsque le jeux est stoppé, il ne doit plus avoir d’autre evenement d’émis (clearIntervale(ref)).
+aun nouveau odd, doit etre crée pour chaque evenetement impair emis. le meme doit etre fait pour les evenement paire.
+Simplement afficher les évenenmentc paire et les evenenemt impaisr dans les deux composant
+style l’element differement en fonction qu’il soit paire ou impaire.
+
+
+== Section 6 Course project
+
+
+=== Adding Navigation with Event Binding and ngIf
+dans le header emetre un evenemenet lorsque l’on clique sur un bouton:
+dans le app.component recuperer cette evenement et changer une variable utiliser par ngIf pour afficher les component
+
+
+[source, javascript]
+----
+export class AppComponent {
+ loadedFeature = 'recipe';
+ onNavigate(feature: string) {
+   this.loadedFeature = feature;}
+----
+
+[source, html]
+----
+<app-header (featureSelected)="onNavigate($event)"></app-header>
+<div class="container">
+ <div class="row">
+   <div class="col-md-12"><div>
+     <app-recipes *ngIf="loadedFeature === 'recipe'"></app-recipes>
+     <app-shopping-list *ngIf="loadedFeature !== 'recipe'"></app-shopping-list>
+ </div>
+</div>
+----
+
+Header
+
+[source, html]
+----
+       <li><a href="#" (click)="onSelect('recipe')" >Recipes</a></li>
+----
+
+[source, javascript]
+----
+controleur:
+export class HeaderComponent {
+ @Output() featureSelected = new EventEmitter<string> ();
+  onSelect(feature: string) {
+   this.featureSelected.emit(feature );
+ }
+}
+----
+=== passing recipe data with property binding;
+
+Nous pouvons désormais utiliser le decorateur @Input sur le component recipe-item
+et d’ajouter la property [recipe] = “recipeEl”
+
+=== Passing Data with Event and Property Binding(Combined)
+	// TODO:
+
+
+== Section 7 Directives Deep Dives
+
+===Module Introduction:
+
+==== ngFor and ngIf Recap:
+C''est deux directives sont de types structural, car elle modifie le DOM autour d''eux.
+Rappel il n’est pas possible de mettre deux directives structurale sur le même éléments.
+
+=== ngClass and ngStyle recap:
+
+ngClass: fournir une classe en fonction d’une condition
+ngStyle: fournir des properties css en fonction d’une condition
+
+=== Creating a Basic Attribute Directive:
+Pour créer une directive on doit ajouter le decorateur Directive venant de ‘@angual/core’
+nous devons indiquer le selector. Comme pour le decorateur component, le selector sert a indiquer comment sera ‘attaché’ la directive sur l''élément du template
+exemple:
+
+
+[source, javascript]
+----
+import { OnInit, ElementRef, Directive} from '@angular/core';
+@Directive({
+   selector: '[appBasicHighligth]'
+})
+export class BasicHighlightDirective implements OnInit{
+   constructor(private elementRef: ElementRef) {}
+   ngOnInit() {
+       this.elementRef.nativeElement.style.backgroundColor = 'green';
+   }
+}
+----
+Ne pas oublier d’importer la directive dans le app.module.ts
+pour utiliser la directive
+
+[source, html]
+----
+ <div appBasicHighligth>Hola!</div>
+ <p appBasicHighligth>Style me with basic directive!</p>
+----
+
+ajouter appBasicHighligth en properties d’un element html
+
+
+=== Using the Renderer to build a Better Attribute Directive
+Comme pour un composant il est possible de créer une directive directement a partir de la console:
+ng g d better-highlight
+Angular pouvant etre utiliser par un service worker , il est donc possible qu’il n’est pas accès au DOM sur lequel il est exécuté.
+Donc l’element sur lequel la bassicHighligth est utilisé ne sera pas modifié.
+Il est donc conseillé d’utiliser l’objet Renderer2 (from ‘angular/core’).
+L’exemple précédent avec l’utilisation du renderer:
+
+[source, javascript]
+----
+ constructor(private ElRef: ElementRef, private renderer: Renderer2) { }
+ngOnInit() {
+   this.renderer.setStyle(this.ElRef.nativeElement, 'background-color', 'blue');}
+----
+
+==== More about the Renderer
+Nous devons utiliser le renderer pour chaque manipulation du DOM.
+
+plus d’info sur le renderer :  documentation
+
+
+=== Using HostListener to Listen to Host Events:
+Pour rendre le composant plus interactif nous pouvons écouter les evenements.
+Si  l’on veut modifier le style seulement si la souris hover  l’element sur lequel la directive est installé, il faut ajouter un nouveau decorateur @HostListener from ‘angular/core’).
+Le décorateur prend en parametre l’un des argument supporté par le DOM Element (liste )
+
+
+[source, javascript]
+----
+@HostListener('mouseenter') mouseover(eventData: Event) {
+   console.log('mouseenter');
+   this.renderer.setStyle(this.ElRef.nativeElement, 'background-color', 'blue');
+ }
+
+ @HostListener('mouseleave') mouseLeave() {
+   console.log('mouseleave');
+   this.renderer.setStyle(this.ElRef.nativeElement, 'background-color', 'transparent');
+ }
+
+----
+TIP: EvenData n''etant pas utilisé nous ne sommes pas obligé de le mettre.
+
+
+=== Using HostBinding to Bind to Host Properties:
+Le hostbinding permet de modifier une properties de l’element sur lequel une directive est mis. Il peut etre utiliser comme sur le renderer.
+Ce decorateur doit etre importer a partir d’angular/core, il prend en parametre la property qui dois etre modifiée.
+
+
+[source, javascript]
+----
+HostBinding(‘style.background-color’) backgroundColor: string=’transparent’;
+----
+WARNING: il est important d’initialiser la variable
+
+[source, JAVASCRIPT]
+----
+ @HostListener('mouseenter') mouseover() {
+   this.backgroundColor = 'blue';
+ }
+
+ @HostListener('mouseleave') mouseLeave(eventData: Event) {
+   this.backgroundColor = 'transparent';
+ }
+----
+
+
+=== Binding to Directive Properties
+Dans le cas présent on peut ajouter des properties a notre directive: avec le decorateur @Input()
+ainsi nous pouvons ‘binder’ les parametre sur la directive;
+
+[source, HTML]
+----
+ <div appBetterHighlight [defaultColor]="'yellow'" [highlightColor]="'green'">Style me with better directive</div>
+----
+WARNING: noter les simple quote.
+
+Ici on peut voir que l’on peu ‘bind’ des properties d’une directive en les ‘enclosant’ avec des ‘[]’
+pour la directive ngClass nous pouvons voir qu’elle est appeler ainsi:
+[ngClass]=’’, c’est la manière typique pour appeler une directive qui ne posède qu’une seule property. On passe en argument le nom que la directive sur le decorateur @Input().
+
+
+[source, HTML]
+----
+@Input('appBetterHighlight') highlightColor : string = 'blue';
+----
+La directive doit allors ettre appelé ainsi:
+
+[source, HTML]
+----
+<div [appBetterHighlight]="'yellow'" [defaultColor]="'red'" >Style me with better directive</div>
+<!-- Ou meme ainsi -->
+<div [appBetterHighlight]="'yellow'" defaultColor="red" >Style me with better directive</div>
+----
+TIP: lorsque l’on ne bind pas la property avec des crochets il est inutile de mettre les simple quote.
+
+=== What Happens behind the Scenes on Structural Directives
+
+Lorsque l’on indique une *** devant les directives ngIf et ngFor ce qu’il se passe c’est qu’angular crée un template
+
+
+[source, HTML]
+----
+<div
+     *ngIf="!onlyOdd">
+       <li class="list-group-item"
+       [ngClass]="{Odd: even % 2 !== 0}"
+       [ngStyle]="{backgroundColor:  even % 2 !== 0 ? 'yellow': 'transparent'}"
+       *ngFor="let even of evenNumbers">
+         {{even}}
+       </li>
+   </div>
+----
+
+équivaut a
+
+[source, HTML]
+----
+<ng-template [ngIf]="!onlyOdd">
+       <div><li class="list-group-item"
+       [ngClass]="{Odd: even % 2 !== 0}"
+       [ngStyle]="{backgroundColor:  even % 2 !== 0 ? 'yellow': 'transparent'}"
+       *ngFor="let even of evenNumbers">
+        {{even}}
+       </li>
+     </div>
+   </ng-template>
+----
+
+=== Building a structural Directive:
+Pour creer une directive qui fais l’inverse de ngIf : unless :
+ ng g d unless
+
+[source, JAVASCRIPT]
+----
+@Directive({
+ selector: '[appUnless]'
+})
+export class UnlessDirective {
+ @Input() set appUnless(condition: boolean) {
+   if (!condition) {
+     this.vcRef.createEmbeddedView(this.templateRef);
+   } else {
+     this.vcRef.clear();
+   }
+ }
+
+ constructor(private templateRef: TemplateRef<any>, private vcRef: ViewContainerRef) { }
+}
+----
+
+ici on peut voir que nous prenons en entrée une mé
+TemplateRef correspond au contenu de la directive (ngTemplate) une directive structurel est toujour mis sur un element de type ng-template.
+
+ViewContainerRef repressente le container ou une ou plusieurs vue (ici le template) peuvent etre attachées.
+
+
+=== Understanding ngSwitch
+
+[source, HTML]
+----
+
+ <div [ngSwitch]="value">
+     <p *ngSwitchCase="5"> value is 5</p>
+     <p *ngSwitchCase="10"> value is 10</p>
+     <p *ngSwitchCase="15"> value is 15</p>
+     <p *ngSwitchDefault> value is 5</p>
+ </div>
+----
+
+
+
+ isOpen : boolean = false;
+
+
+[source, JAVASCRIPT]
+----
+
+ @HostListener('click') toggleOpen() {
+   this.isOpen = !this.isOpen;
+   console.log('open ' + this.isOpen);
+   if (this.isOpen) {
+     this.renderer.addClass(this.elementRef.nativeElement, 'open');
+   } else {
+     this.renderer.removeClass(this.elementRef.nativeElement, 'open');
+   }
+ }
+----
+
+La solution en utilisant le hostBinding:
+
+
+[source, JAVASCRIPT]
+----
+
+ constructor(private elementRef: ElementRef, private renderer: Renderer2) { }
+ @HostBinding('class.open') isOpen : boolean = false;
+ @HostListener('click') toggleOpen() {
+   this.isOpen = !this.isOpen;
+ }
+----
+
+== Section 9: Services & Dependency Injection:
+
+=== Creating a Logging Service:
+
+[source, JAVASCRIPT]
+----
+export class LoggingService {
+   logStatusMsg(status: string) {
+       console.log('A server status changed, new status: ' + status);
+   }
+}
+----
+
+=== Injecting the Logging Service Into Component:
+Pour ce servire du service:
+pour cela il faut l’ajouter dans le constructor de la classe et l’ajouter dans le providers du decorateur component. angular va allors automatiquement creer une instance de la classe
+
+[source, JAVASCRIPT]
+----
+
+@Component({
+ selector: 'app-new-account',
+ templateUrl: './new-account.component.html',
+ styleUrls: ['./new-account.component.css'],
+ providers: [LoggingService]
+})
+// TODO mieux expliquer !
+constructor(private logSvc: LoggingService) {};
+this.logSvc.logStatusMsg(accountStatus);
+----
+
+=== Creating a Data Service:
+
+
+=== Understanding the Hierarchical Injector:
+Lorsqu’ Angular creer un service, le component ainsi que tous les child-component recevevront la meme instance du service.
+Si nous instancions
+AppModule : meme instance de service pour tous les components et tous les services
+AppComponent meme instance de serviec pour tous les component pas pour les services
+Component meme instance de services pour le component et les child component
+TODO utiliser le tableau et l’expliquer
+
+=== How many Intances of Service Should It Be?:
+Dans notre cas si nous voulons utiliser le meme service il faut supprimer l’ajout du service dans le providers, ainsi nous utiliserons celui ajouter dans le app.component
+attention a bien laisser l’ajout du service dans le constructeur
+
+=== Injecting Services Into Services:
+Pour injecter un service dans un autre service il faut ajouter le decorateur @Injectable sur le service destinataire.
+
+=== Using Services for Cross-Component Communication:
+Il est possible d’emettre des evenement a partir d’un service et de les écouter dans le component dans lequel le service est appelé:
+Il n’est ainsi plus nécessaire de construire une chaine d’evenement dans les component
+
+==== Exercice 5: Practicing Services:
+TODO
+
+== Section 10: Course Project - Services & Dependency Injection
+Intro:
+
+== Section 11:
+Why do we need a rooter
+
+=== Understanding the Example Project:
+Setting up and loading Routes:
+Pour utiliser le routage il faut dans le appModule.ts ajouter une constante de type Routes (from @angualar/router’)
+const appRoutes: Routes = [];
+cette constantes est un tableau d’objet javascript:
+{path : 'users' , component: UserComponent}
+
+Qui prend un chemin et le component associé. Ici users correspondra au path http://localhost:4200/#/users
+
+Il faut ensuite ajouter dans la liste d’import des module le module RouterModule (from @angular/router)
+Ce module possede une fonction forRoute qui prend en parametre un objet de type Routes (notre constantes donc)
+
+[source, JAVASCRIPT]
+----
+ imports: [
+   BrowserModule,
+   FormsModule,
+   HttpModule,
+   RouterModule.forRoot(appRoute)
+ ],
+
+----
+Enfin il faut ajouter la directive
+
+*<router-outlet></router-outlet>*
+a la place des directives de component dans le *app.component.ts*
+
+==== Navigating with RoutersLinks
+
+Il est possible de mettre des liens vers le path correspondant:
+
+
+[source, HTML]
+----
+       <li role="presentation" class="active"><a href="/">Home</a></li>
+       <li role="presentation"><a href="/servers">Servers</a></li>
+       <li role="presentation"><a href="/users">Users</a></li>
+----
+
+Mais cela implique de raffraichir la page a chaque fois, ce qui n’est pas aggreable pour l’utilisateur (et on perd le context de l’application).
+Pour indiquer a angular le changement de route sans perdre le context il faut utiliser la directive routerLink :
+
+[source, HTML]
+----
+      <a routerLink="/">Home</a>
+      <a routerLink="/servers">Servers</a>
+      <a routerLink="[‘/users’]">Users</a>
+----
+=== Understanding Navigation Path
+la valeur que prend le routerLink et un path, donc lorsque l’on met un ‘/’ au début nous indiquons qu’il sagit d’un chemin absolu, sinon il s’agit d’un chemin relatif.
+on peut donc indique un chemin de style ‘./servers’, ‘../servers’, ‘/servers’ …etc
+
+=== Styling active Router Link
+Pour modifier le style css de nos tabulation il faut utiliser la directiev routerLinkActive.
+Cette directive analyse le path et vérifie que le path configurer dans routerLink est contenu dedans. Pour obliger la directive a vérifier que le contenu du path est exactement egale au path de routerLink il faut ajouter la proprieté routerLinkActiveOptions (en property binding car il prend un objet javascript) :
+       <li role="presentation" routerLinkActive="active"
+         [routerLinkActiveOptions]="{exact: true}"
+       ><a routerLink="/">Home</a></li>
+
+=== Navigating Programmatically
+Pour permettre le changement de path après avoir avoir effectuer une action il faut injecter un objet de type Router from ‘@angular/router’) nous pouvons ensuite l’utiliser de cette facon:
+
+[source, JAVASCRIPT]
+----
+  doSomething() {this.router.navigate(['/servers']);}
+----
+
+=== Using relative paths in programmatic navigating
+Contrairement a la directive routerLink lorsque l’on injecte le Router angular ne connait pas le path actif, donc chaque path indiquer est un chemin absolu, pour mettre un path relatif, il faut indiquer a angular le chemin actuel de la page. Pour connaitre ce chemin nous pouvons injecter l’object ActivatedRoute form @angular/router, ansi
+
+[source, JAVASCRIPT]
+----
+this.router.navigate(['servers'], {relativeTo: this.route});
+----
+=== Passing Parameters into route
+
+Il faut indiquer lors de la configuration des path dans module la partie dynamique du chemin en prefixant par ‘:’ la variable.
+exemple:
+	//TODO
+
+=== Fetching route parameters
+Pour recuperer les parametre dans il faut injected l’objet ActivatedRoute nous pouvons ensuite recuperer les objets de cette manière :
+ ngOnInit() {
+   this.user = {
+     id: this.route.snapshot.params['id'],
+     name: this.route.snapshot.params['name']
+   };
+ }
+=== Fetching route parameter reactively
+si nous ajoutons un bouton qui va changer les parametres du path courant :
+<a class="btn btn-primary" [routerLink]="['/users', 0, 'anna']">load anna</a>
+Angular n’effectue pas la mise a jours, en effet le routage ne change pas nous somme toujours par exemple sur la route : /user/:id/:name même si les parametres changent. Angular ne vas donc pas recréer le composant et donc le ngInit ne sera jamais réappeler. Pour permettre de changer réactivement les parametres il faut souscrire a route.params  qui est un objet de type Observable (voir section suivante).
+
+ ngOnInit() {
+   this.user = {
+     id: this.route.snapshot.params['id'],
+     name: this.route.snapshot.params['name']
+   };
+   this.route.params.subscribe(
+    (params: Params) => {
+      this.user.id = params['id'];
+      this.user.name = params['name'];
+    }
+   );
+ }
+
+=== An important Note about Routes Observables:
+Lorsque l’on quitte un composant, n’en ayant plus besoin,  angular va le détruire, ce qui pourrait ne pas etre le cas de la souscription a l’observable.
+Pour s’assurer que la subscription a bien était supprimé on la détruit dans la fonction onDestroy. Pour acceder a l’observable on va le stocker dans une variable de type subscription (from @rxjs/Subscription):
+  this.subscription = this.route.params.subscribe(...);
+
+ngOnDestroy() {
+this.subscription.unsubscribe;
+}
+=== Passing querry parameters and fragments:
+Pour ajouter des querryParam au chemin exemple
+localhost:4200/test/1?querryParam1=OK#fragment1
+
+Nous pouvons binder une properties de la directive routerLink: queryParams
+
+[source, HTML]
+----
+<a
+       [routerLink]="['/servers', server.id, 'edit']"
+       [queryParams]="{allowEdit: 1}"
+       fragment="loading"
+       href="#"
+       class="list-group-item"
+       *ngFor="let server of servers">
+       {{ server.name }}
+     </a>
+----
+Programmatiquement nous utilisions injectons le router et nous le passons dans l’objet juste après le path (comme pour le param relativeTo:
+
+
+[source, JAVASCRIPT]
+----
+ this.router.navigate(['/servers', id, 'edit'], {queryParams: {allowEdit: '1'}, fragment: 'loading'});
+----
+
+=== Retrieving Query Parameters and Fragments:
+Comme pour les parametres de path on recuperer les queryParam et framgement en injectant le ActivatedRoute, ils sont recuperable dans snapshot mais comme
+
+[source, JAVASCRIPT]
+----
+this.route.snapshot.queryParams['id'];
+// ou bien souscrire a un observable :
+this.route.queryParams
+----
+=== Practicing and some common Gatcha
+Pour recuperer un parameter du path de type number il faut ajouter un ‘+’:
+
+[source, JAVASCRIPT]
+----
+   const id = +this.route.snapshot.params['id'];
+----
+=== Setting up Child  (Nested) Routes:
+Pour ajouter des enfant a une route il suffit d’ajouter les route dans le tableau de children, lors de la declaration des routes:
+
+[source, JAVASCRIPT]
+----
+{path : 'users' , component: UsersComponent, children: []}
+// Il n’est alors plus utile de prefixer par users le chemin:
+
+{path : 'users' , component: UsersComponent, children: [
+   {path : ':id/:name' , component: UserComponent}
+ ]}
+----
+Le composant enfant sera alors afficher dans la directive router-outlet relatif a la route parent:
+
+[source, JAVASCRIPT]
+----
+   this.router.navigate(['edit'], {relativeTo: this.route, queryParamsHandling: 'preserve'});
+----
+
+=== Using queryParameter - Practice
+Configuring the handling of query parameters:
+Lorsque l’on navigue d’une route a l’autre il est possible “d’heriter” des query parameters du parent, pour ce faire lors de l’appel a la fonction navigate nous pouvons ajouter l’option :
+
+[source, JAVASCRIPT]
+----
+this.router.navigate(['edit'], {relativeTo: this.route, queryParamsHandling: 'preserve'});
+----
+=== Redirecting an wildcard Routes
+Pour rediriger une route vers une autre route il suffit de mettre redirectTo: ‘path’ a la place de component: Component dans la declarations des routes:
+
+Pour rediriger toutes les routes qui ne corresponde pas au routes definie ( 404 not found) il faut mettre en path : ‘**’ attention que cette routes soit bien la dernière route definies.
+
+[source, JAVASCRIPT]
+----
+
+{path: 'not-found', component: PageNotFoundComponent},
+ {path: '**', redirectTo: '/not-found'}
+----
+
+=== Important: Redirection Path Matching
+il est possible d’ajouter la valeur pathMatch: ‘full’ lors d’une redirection car par exemple {path: ‘’, redirectTo: ‘/not-found’}, par defaut angular vérifie que le path entrée est prefixé par le path de la route (strategy prefix).
+
+=== Outsourcing the route configuration
+
+
+il est possible de configurer dans un module le routing pour ca
+
+[source, javascript]
+----
+
+const appRoute: Routes = [
+...
+]
+@NgModule({
+   imports : [ RouterModule.forRoot(appRoute)],
+   exports : [ RouterModule]})
+export class AppRoutingModule {}
+----
+
+Il suffit alors d’importer le module dans le appModule.
+
+=== Protecting Routes with canActivate
+
+pour permettre d’executer du code avant d’acceder a une route on utilise la propertie canActivate sur la route. Cette property recoit un tableau de service qui implement CanActivate.
+La methode canActivate prend deux arguments la route ActivatedRouteSnapshot et sont état: RouterStateSnapshot (from @angular/route).
+Cette méthode retourne un Observable (from @rxjs/Observable) ou une Promise ou un boolean.
+ex:
+
+[source, javascript]
+----
+@Injectable()
+export class AuthGuardService implements CanActivate{
+ constructor(private authSvc: AuthService, private router : Router) {}
+
+ canActivate(route: ActivatedRouteSnapshot,
+   state : RouterStateSnapshot): Observable<boolean> | Promise<boolean> | boolean {
+       return this.authSvc.isAuthentificated()
+         .then( // la promise est resolue on obtient sont contenu
+           (authentificated : boolean) => {
+  	 	   if (authentificated) {
+                return true;
+              } else {this.router.navigate(['/']);}
+           }
+         );
+ }
+}
+----
+Ici le service retourne :
+
+[source, javascript]
+----
+
+isAuthentificated() {
+  const promise = new Promise(
+       (resolve, reject) => {
+         setTimeout(() => {
+           resolve(this.loggedIn);
+          }, 8000);
+       }
+     );
+     return promise;
+ }
+----
+
+il faut alors ajouter le guard dans le appModule en provider et le authSvc également car injecté dans le guard.
+[source, javascript]
+----
+
+   ,{path : 'servers', canActivate: [AuthGuardService], component: ServersComponent, children: [
+----
+ici tous les enfant de la route seront protegé par le guard.
+
+=== Protecting Child (Nested) Routes with canActivateChild:
+si l’on veut seulement proteger les childs nous pouvons ajouter des canActivate sur chaque enfant, ou bien utiliser l’interface CanActivateChild (from angular/route):
+Cette interface fonctionne comme CanActivate.
+[source, javascript]
+----
+
+ canActivateChild(route: ActivatedRouteSnapshot,
+   state : RouterStateSnapshot): Observable<boolean> | Promise<boolean> | boolean {
+     return this.canActivate(route, state);
+ }
+TODO separer
+
+{path : 'servers', canActivateChild: [AuthGuardService], component: ServersComponent, children: [
+     {path : ':id' , component: ServerComponent}
+     ,{path : ':id/edit' , component: EditServerComponent}
+   ]},
+----
+=== Controlling Navigation with canDeactivate:
+Imaginons que nous voulons changer de route après une actions:
+[source, javascript]
+----
+
+   this.stateChange = false;
+ onUpdateServer() {
+   this.stateChange = true;
+   this.serversService.updateServer(this.server.id, {name: this.serverName, status: this.serverStatus});
+   this.router.navigate(['../'], {relativeTo: this.route} );
+ }
+----
+
+Mais que nous voulons empêcher la redirection si des changement n’ont pas été sauvegardé (un des attribut du composant a été modifié).
+La logique est donc interne au composant on ne peut utiliser un guard de type CanActivate car il faut faire le lien entre le guard et le composant.
+Nous devons utiliser un guard sur le composant et utiliser la propriete canDeactivate: sur la route.
+pour cela il faut creer une interface :
+[source, javascript]
+----
+
+export interface CanComponentDeactivate {
+   canDeactivate: () => Promise<boolean> | Observable<boolean> | boolean;
+}
+----
+et l’implementer dans le composant:
+[source, javascript]
+----
+
+ canDeactivate() {
+   if (this.changeSaved) {
+     return true;
+   }
+   if (this.serverName != this.server.name || this.serverStatus != this.server.status) {
+     return confirm('voulez vous vraiment quitter ?');
+   }
+   return true;
+ }
+
+----
+
+
+Ensuite il faut creer le guard qui implementera l’interface CanDeactivate (from @angular/router):
+[source, javascript]
+----
+
+interface CanDeactivate<T> {
+  canDeactivate(component: T, currentRoute: ActivatedRouteSnapshot, currentState: RouterStateSnapshot, nextState?: RouterStateSnapshot): Observable<boolean> | Promise<boolean> | boolean
+}
+----
+
+Cette une interface generique
+[source, javascript]
+----
+
+export class CanDeactivateGuard implements CanDeactivate<CanComponentDeactivate> {
+
+   canDeactivate(
+        interf : CanComponentDeactivate,
+        currentRoute: ActivatedRouteSnapshot,
+        currentState:RouterStateSnapshot,
+        nextState?: RouterStateSnapshot
+   ): Observable<boolean> | Promise<boolean> | boolean {
+       return interf.canDeactivate();
+   }
+}
+----
+
+il faut alors l’ajouter dans la route:
+,{path : ':id/edit' , component: EditServerComponent, canDeactivate: [CanDeactivateGuard]}
+ne pas oublier d’ajouter le provider du guard dans le module:
+providers: [ServersService, AuthService, AuthGuardService, CanDeactivateGuard],
+
+=== Passing Static Data to Route :
+Lorsque l’on redirige une route il est possible de fournir des données en effectuant :
+{path: 'not-found', component: ErrorPageComponent, data: {message: 'Page not found !'}},
+Recuperation des données dans le component:
+[source, javascript]
+----
+
+export class ErrorPageComponent implements OnInit {
+  errorMessage : string;
+    constructor(private route : ActivatedRoute) { }
+    ngOnInit() {
+     this.errorMessage = this.route.snapshot.data['message'];
+     this.route.data.subscribe(
+       (data : Data) => {this.errorMessage = data['message'];}
+     );
+   }
+}
+----
+
+=== Resolving dynamic data with the resolve Guard:
+Lorsque nous arrivons sur une page, la page s’affiche directement , ensuite nous initialisons les données en appelans un service qui répond directement. Mais dans la realite les données proviennent souvent d’un backend, et cela peut prendre plusieurs secondes avant qu’elles soient récupérées. Nous avons donc besoin que du code soit lancé avant que la route soit rendered. Pour permettre cela nous avons besoin d’un resolve guard, comme le canDeactivate et le canActivate, il s’agit d’un service, qui permet d’effectuer un pre loading de la page (une alterantive est d’afficher la page et d’ajouter un spinner tant que les données ne sont pas récupérées)
+
+[source, javascript]
+----
+export interface Server {
+ name: string;
+ id: number;
+ status: string;
+}
+----
+
+[source, javascript]
+----
+
+@Injectable()
+export class ServerResolverService implements Resolve<Server>{
+
+ constructor(private serverSvc : ServersService) {}
+
+ resolve (route: ActivatedRouteSnapshot,
+   state: RouterStateSnapshot
+ ) : Observable<Server> | Promise<Server> | Server{
+   return this.serverSvc.getServer(+route.params['id']);
+ }
+}
+----
+
+On ajoute un Resolver en ajoutant dans la route la properties resolve et en ajoutant un objet json la propertie a resoudre dans le document, ici resolve.
+[source, javascript]
+----
+
+{path : ':id' , component: ServerComponent, resolve: {server : ServerResolverService} }
+----
+ensuite dans le component :
+[source, javascript]
+----
+ngOnInit() {
+   this.subscription = this.route.data.subscribe((data : Data) => {
+     this.server = data['server'];
+   });
+----
+
+
+
+RECAPITULATIF TODO TABLEAU:
+Routings: contient la liste des routes
+routerLink: permet de changer la route
+routerLinkActive: ?
+
+TODO
+Section 12: Course Project - Routing:
+Setting Up Routes:
+Adding Navigation to the App:
+Marking Active Routes:
+Fixing Page Reload Issue:
+Child Routes: Challenge:
+Adding Child Routing Together:
+Configuring Route Parameters:
+Passing Dynamic Parameters to Links
+Stylling Active Recipe Items
+Adding Editing Routes:
+Retrieving Route Parameters:
+Programmatic Navigation to the Edit Page:
+One Note about Route Observables:
+Project Cleanup:
